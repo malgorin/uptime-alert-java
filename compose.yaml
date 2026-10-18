@@ -1,0 +1,40 @@
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: uptime-alert-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: uptime_alert
+      MYSQL_USER: uptime_user
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD en el archivo .env}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/uptime_alert
+      SPRING_DATASOURCE_USERNAME: uptime_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?Define ADMIN_USERNAME en el archivo .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD en el archivo .env}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
